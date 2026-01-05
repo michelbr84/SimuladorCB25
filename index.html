@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Simulador Brasileirão Série A 2025 — 38 Rodadas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="dot"></div>
+        <div>
+          <div class="brand-title">SIMULADOR</div>
+          <div class="brand-sub">Campeonato Brasileiro Série A — Edição 2025</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="seedbox">
+          <label class="seedlabel" for="seedInput">Seed</label>
+          <input id="seedInput" class="seedinput" type="text" placeholder="ex: michel-2025" />
+          <button id="btnApplySeed" class="btn btn-ghost" type="button">Aplicar</button>
+        </div>
+
+        <button id="btnReset" class="btn btn-ghost" type="button">Reiniciar</button>
+        <button id="btnNext" class="btn btn-primary" type="button">Próxima rodada</button>
+        <button id="btnSimAll" class="btn btn-ghost" type="button">Simular até o fim</button>
+      </div>
+    </header>
+
+    <main class="grid">
+      <!-- TABELA -->
+      <section class="panel">
+        <div class="panel-head">
+          <h2 class="panel-title">TABELA</h2>
+          <div class="panel-sub">CLASSIFICAÇÃO</div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="standings">
+            <thead>
+              <tr>
+                <th class="col-pos">#</th>
+                <th class="col-team">Time</th>
+                <th class="col-num">P</th>
+                <th class="col-num">J</th>
+                <th class="col-num">V</th>
+                <th class="col-num">SG</th>
+                <th class="col-num">GP</th>
+              </tr>
+            </thead>
+            <tbody id="standingsBody"></tbody>
+          </table>
+        </div>
+
+        <div class="legend">
+          <div class="legend-item"><span class="pill p-lib"></span> libertadores</div>
+          <div class="legend-item"><span class="pill p-pre"></span> pré-libertadores</div>
+          <div class="legend-item"><span class="pill p-sul"></span> sul-americana</div>
+          <div class="legend-item"><span class="pill p-reb"></span> rebaixados</div>
+        </div>
+      </section>
+
+      <!-- RODADA -->
+      <section class="panel">
+        <div class="panel-head panel-head-split">
+          <div>
+            <div class="round-kicker" id="roundTitle">1ª RODADA</div>
+            <div class="round-sub" id="roundStatus">Aguardando simulação</div>
+          </div>
+
+          <div class="round-nav">
+            <button class="icon-btn" type="button" id="btnPrevRound" aria-label="Rodada anterior">‹</button>
+            <div class="round-num" id="roundNum">1</div>
+            <button class="icon-btn" type="button" id="btnNextRoundView" aria-label="Próxima rodada">›</button>
+          </div>
+        </div>
+
+        <div class="matches" id="matchesList"></div>
+
+        <div class="footer-note" id="footerNote">
+          <span class="muted">Dica:</span> defina uma <b>Seed</b> e clique em <b>Próxima rodada</b>.
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

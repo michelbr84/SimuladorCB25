@@ -1,0 +1,449 @@
+// =========================
+// Teams (Série A 2025 - conforme sua imagem de tabela)
+// =========================
+const TEAMS = [
+  { id: "FLA", name: "Flamengo", short: "FLA" },
+  { id: "PAL", name: "Palmeiras", short: "PAL" },
+  { id: "CRU", name: "Cruzeiro", short: "CRU" },
+  { id: "MIR", name: "Mirassol", short: "MIR" },
+  { id: "FLU", name: "Fluminense", short: "FLU" },
+  { id: "BOT", name: "Botafogo", short: "BOT" },
+  { id: "BAH", name: "Bahia", short: "BAH" },
+  { id: "SAO", name: "São Paulo", short: "SAO" },
+  { id: "GRE", name: "Grêmio", short: "GRE" },
+  { id: "RBB", name: "Bragantino", short: "RBB" },
+
+  { id: "CAM", name: "Atlético-MG", short: "CAM" },
+  { id: "SAN", name: "Santos", short: "SAN" },
+  { id: "COR", name: "Corinthians", short: "COR" },
+  { id: "VAS", name: "Vasco", short: "VAS" },
+  { id: "VIT", name: "Vitória", short: "VIT" },
+  { id: "INT", name: "Internacional", short: "INT" },
+  { id: "CEA", name: "Ceará", short: "CEA" },
+  { id: "FOR", name: "Fortaleza", short: "FOR" },
+  { id: "JUV", name: "Juventude", short: "JUV" },
+  { id: "SPT", name: "Sport", short: "SPT" },
+];
+
+const TEAM_BY_ID = Object.fromEntries(TEAMS.map(t => [t.id, t]));
+
+// =========================
+// Deterministic RNG (seed)
+// - xmur3 (hash) + sfc32 (PRNG)
+// =========================
+function xmur3(str) {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return function() {
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    h ^= (h >>> 16);
+    return h >>> 0;
+  };
+}
+
+function sfc32(a, b, c, d) {
+  return function() {
+    a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0;
+    let t = (a + b) | 0;
+    a = b ^ (b >>> 9);
+    b = (c + (c << 3)) | 0;
+    c = (c << 21) | (c >>> 11);
+    d = (d + 1) | 0;
+    t = (t + d) | 0;
+    c = (c + t) | 0;
+    return (t >>> 0) / 4294967296;
+  };
+}
+
+function makeRng(seedStr) {
+  const seed = seedStr?.trim() ? seedStr.trim() : "default-2025";
+  const h = xmur3(seed);
+  return sfc32(h(), h(), h(), h());
+}
+
+// =========================
+// Round-robin scheduler (38 rounds / 20 teams)
+// Circle method: 19 rounds (turno) + 19 rounds (returno)
+// =========================
+function buildRounds(teamIds, rng) {
+  // Important: deterministic shuffle based on seed (optional, but makes season vary with seed)
+  const ids = [...teamIds];
+  // Fisher-Yates using rng
+  for (let i = ids.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+  }
+
+  const n = ids.length; // 20
+  const fixed = ids[0];
+  let rotating = ids.slice(1); // 19
+
+  const firstLeg = [];
+  for (let round = 0; round < n - 1; round++) { // 19
+    const pairs = [];
+
+    const left = [fixed, ...rotating.slice(0, (n / 2) - 1)];          // 10
+    const right = [...rotating.slice((n / 2) - 1)].reverse();         // 10
+
+    for (let i = 0; i < n / 2; i++) {
+      const a = left[i];
+      const b = right[i];
+
+      // Alternate home/away to balance
+      const home = (round + i) % 2 === 0 ? a : b;
+      const away = (round + i) % 2 === 0 ? b : a;
+
+      pairs.push({ home, away, result: null, meta: makeMeta(round + 1, i + 1) });
+    }
+
+    firstLeg.push({ number: round + 1, matches: pairs });
+
+    // rotate: move last to front
+    rotating = [rotating[rotating.length - 1], ...rotating.slice(0, rotating.length - 1)];
+  }
+
+  // second leg: swap home/away
+  const secondLeg = firstLeg.map(r => ({
+    number: r.number + (n - 1),
+    matches: r.matches.map(m => ({
+      home: m.away,
+      away: m.home,
+      result: null,
+      meta: makeMeta(r.number + (n - 1), 0) // meta placeholder
+    }))
+  }));
+
+  return [...firstLeg, ...secondLeg]; // 38
+}
+
+// Minimal metadata placeholder (you can replace with official dates/venues later)
+function makeMeta(roundNumber, slot) {
+  return {
+    date: `RODADA ${roundNumber}`,
+    venue: `Jogo ${slot}`,
+    time: `—`,
+  };
+}
+
+// =========================
+// Table stats
+// =========================
+function makeEmptyStats(teamId) {
+  return { id: teamId, P: 0, J: 0, V: 0, E: 0, D: 0, GP: 0, GC: 0, SG: 0 };
+}
+
+function sortStandings(list) {
+  return [...list].sort((a, b) => {
+    if (b.P !== a.P) return b.P - a.P;
+    if (b.V !== a.V) return b.V - a.V;
+    if (b.SG !== a.SG) return b.SG - a.SG;
+    if (b.GP !== a.GP) return b.GP - a.GP;
+    if (a.GC !== b.GC) return a.GC - b.GC;
+    return TEAM_BY_ID[a.id].name.localeCompare(TEAM_BY_ID[b.id].name, "pt-BR");
+  });
+}
+
+function zoneClass(pos) {
+  if (pos >= 1 && pos <= 4) return "z-lib";
+  if (pos >= 5 && pos <= 6) return "z-pre";
+  if (pos >= 7 && pos <= 12) return "z-sul";
+  if (pos >= 17 && pos <= 20) return "z-reb";
+  return "";
+}
+
+// =========================
+// Goal sampling (deterministic with rng)
+// =========================
+function sampleGoals(rng, isHome) {
+  const r = rng();
+  let g = 0;
+  if (r < 0.28) g = 0;
+  else if (r < 0.56) g = 1;
+  else if (r < 0.77) g = 2;
+  else if (r < 0.90) g = 3;
+  else if (r < 0.97) g = 4;
+  else g = 5;
+
+  // small home advantage
+  if (isHome && rng() < 0.18) g += 1;
+
+  return Math.min(g, 6);
+}
+
+function applyMatchToTable(statsById, match) {
+  const { home, away, result } = match;
+  const hg = result.hg, ag = result.ag;
+
+  const h = statsById[home];
+  const a = statsById[away];
+
+  h.J += 1; a.J += 1;
+  h.GP += hg; h.GC += ag;
+  a.GP += ag; a.GC += hg;
+
+  if (hg > ag) { h.V += 1; h.P += 3; a.D += 1; }
+  else if (hg < ag) { a.V += 1; a.P += 3; h.D += 1; }
+  else { h.E += 1; a.E += 1; h.P += 1; a.P += 1; }
+
+  h.SG = h.GP - h.GC;
+  a.SG = a.GP - a.GC;
+}
+
+// =========================
+// App State
+// =========================
+let seedValue = "default-2025";
+let rng = makeRng(seedValue);
+
+let rounds = [];                 // 38 rounds
+let statsById = {};              // table stats
+let simulatedRoundIndex = 0;     // how many rounds already simulated (0..38)
+let viewingRoundIndex = 0;       // which round user is viewing (0..37)
+
+// =========================
+// Init / Reset
+// =========================
+function buildFreshSeason() {
+  rng = makeRng(seedValue);
+
+  const teamIds = TEAMS.map(t => t.id);
+  rounds = buildRounds(teamIds, rng);
+
+  statsById = Object.fromEntries(TEAMS.map(t => [t.id, makeEmptyStats(t.id)]));
+  simulatedRoundIndex = 0;
+  viewingRoundIndex = 0;
+
+  updateControls();
+  renderAll();
+}
+
+function recomputeTableFromSimulated() {
+  statsById = Object.fromEntries(TEAMS.map(t => [t.id, makeEmptyStats(t.id)]));
+  for (let i = 0; i < simulatedRoundIndex; i++) {
+    rounds[i].matches.forEach(m => {
+      if (m.result) applyMatchToTable(statsById, m);
+    });
+  }
+}
+
+// =========================
+// Simulation
+// =========================
+function simulateNextRound() {
+  if (simulatedRoundIndex >= 38) return;
+
+  // For determinism across actions:
+  // We build the entire season with rng, and each simulated match consumes rng in a fixed order.
+  const round = rounds[simulatedRoundIndex];
+
+  round.matches = round.matches.map(m => {
+    if (m.result) return m;
+    const hg = sampleGoals(rng, true);
+    const ag = sampleGoals(rng, false);
+    return { ...m, result: { hg, ag } };
+  });
+
+  // Apply to table incrementally
+  round.matches.forEach(m => applyMatchToTable(statsById, m));
+
+  simulatedRoundIndex += 1;
+
+  // Auto-advance view to current round (optional, feels natural)
+  viewingRoundIndex = Math.min(simulatedRoundIndex, 38) - 1;
+
+  updateControls();
+  renderAll();
+}
+
+function simulateAll() {
+  while (simulatedRoundIndex < 38) simulateNextRound();
+}
+
+// =========================
+// UI Rendering
+// =========================
+function ordinalRoundTitle(n) {
+  // 1ª, 2ª ... 38ª
+  return `${n}ª RODADA`;
+}
+
+function renderStandings() {
+  const body = document.getElementById("standingsBody");
+  body.innerHTML = "";
+
+  const sorted = sortStandings(Object.values(statsById));
+  sorted.forEach((s, idx) => {
+    const pos = idx + 1;
+    const team = TEAM_BY_ID[s.id];
+
+    const tr = document.createElement("tr");
+    tr.className = zoneClass(pos);
+
+    tr.innerHTML = `
+      <td class="col-pos">${pos}</td>
+      <td class="col-team">
+        <div class="teamcell">
+          <span class="teamname">${team.name}</span>
+          <span class="teamslug">${team.short}</span>
+        </div>
+      </td>
+      <td class="col-num strong">${s.P}</td>
+      <td class="col-num">${s.J}</td>
+      <td class="col-num">${s.V}</td>
+      <td class="col-num">${s.SG}</td>
+      <td class="col-num">${s.GP}</td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+function renderMatches() {
+  const list = document.getElementById("matchesList");
+  list.innerHTML = "";
+
+  const round = rounds[viewingRoundIndex];
+  const matches = round.matches;
+
+  const left = document.createElement("div");
+  left.className = "matches-col";
+  const right = document.createElement("div");
+  right.className = "matches-col";
+
+  const half = Math.ceil(matches.length / 2);
+  const leftMatches = matches.slice(0, half);
+  const rightMatches = matches.slice(half);
+
+  function makeMatchCard(m) {
+    const home = TEAM_BY_ID[m.home];
+    const away = TEAM_BY_ID[m.away];
+    const r = m.result;
+
+    const card = document.createElement("div");
+    card.className = "match";
+
+    card.innerHTML = `
+      <div class="match-meta">
+        <span class="meta-date">${m.meta.date}</span>
+        <span class="meta-venue">${m.meta.venue}</span>
+        <span class="meta-time">${m.meta.time}</span>
+      </div>
+
+      <div class="match-row">
+        <div class="side">
+          <div class="crest">${home.short}</div>
+          <div class="abbr">${home.short}</div>
+        </div>
+
+        <div class="score">
+          <span class="g">${r ? r.hg : "—"}</span>
+          <span class="x">x</span>
+          <span class="g">${r ? r.ag : "—"}</span>
+        </div>
+
+        <div class="side right">
+          <div class="abbr">${away.short}</div>
+          <div class="crest">${away.short}</div>
+        </div>
+      </div>
+    `;
+    return card;
+  }
+
+  leftMatches.forEach(m => left.appendChild(makeMatchCard(m)));
+  rightMatches.forEach(m => right.appendChild(makeMatchCard(m)));
+
+  list.appendChild(left);
+  list.appendChild(right);
+}
+
+function renderHeader() {
+  const roundNumber = viewingRoundIndex + 1;
+  document.getElementById("roundTitle").textContent = ordinalRoundTitle(roundNumber);
+  document.getElementById("roundNum").textContent = String(roundNumber);
+
+  const status = document.getElementById("roundStatus");
+  const isSimulated = viewingRoundIndex < simulatedRoundIndex;
+  status.textContent = isSimulated ? "Rodada simulada" : "Aguardando simulação";
+
+  const note = document.getElementById("footerNote");
+  if (simulatedRoundIndex >= 38) {
+    note.innerHTML = `<span class="muted">Status:</span> campeonato finalizado (38/38).`;
+  } else {
+    note.innerHTML = `<span class="muted">Status:</span> simuladas <b>${simulatedRoundIndex}/38</b> rodadas.`;
+  }
+}
+
+function updateControls() {
+  const btnNext = document.getElementById("btnNext");
+  const btnSimAll = document.getElementById("btnSimAll");
+
+  btnNext.disabled = simulatedRoundIndex >= 38;
+  btnSimAll.disabled = simulatedRoundIndex >= 38;
+
+  const btnPrevRound = document.getElementById("btnPrevRound");
+  const btnNextRoundView = document.getElementById("btnNextRoundView");
+
+  btnPrevRound.disabled = viewingRoundIndex <= 0;
+  btnNextRoundView.disabled = viewingRoundIndex >= 37;
+
+  // if viewing future round, still allow browsing
+}
+
+function renderAll() {
+  renderHeader();
+  renderStandings();
+  renderMatches();
+  updateControls();
+}
+
+// =========================
+// Events
+// =========================
+function setupEvents() {
+  const seedInput = document.getElementById("seedInput");
+  seedInput.value = seedValue;
+
+  document.getElementById("btnApplySeed").addEventListener("click", () => {
+    seedValue = seedInput.value.trim() || "default-2025";
+    buildFreshSeason();
+  });
+
+  seedInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      seedValue = seedInput.value.trim() || "default-2025";
+      buildFreshSeason();
+    }
+  });
+
+  document.getElementById("btnReset").addEventListener("click", () => {
+    buildFreshSeason();
+  });
+
+  document.getElementById("btnNext").addEventListener("click", () => {
+    simulateNextRound();
+  });
+
+  document.getElementById("btnSimAll").addEventListener("click", () => {
+    simulateAll();
+  });
+
+  document.getElementById("btnPrevRound").addEventListener("click", () => {
+    viewingRoundIndex = Math.max(0, viewingRoundIndex - 1);
+    renderAll();
+  });
+
+  document.getElementById("btnNextRoundView").addEventListener("click", () => {
+    viewingRoundIndex = Math.min(37, viewingRoundIndex + 1);
+    renderAll();
+  });
+}
+
+// =========================
+// Boot
+// =========================
+setupEvents();
+buildFreshSeason();
