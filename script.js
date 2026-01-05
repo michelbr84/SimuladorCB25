@@ -148,9 +148,11 @@ function sortStandings(list) {
 }
 
 function zoneClass(pos) {
+  // 1-4 Libertadores, 5-6 Pré, 7-12 Sul, 13-16 Neutro, 17-20 Rebaixados
   if (pos >= 1 && pos <= 4) return "z-lib";
   if (pos >= 5 && pos <= 6) return "z-pre";
   if (pos >= 7 && pos <= 12) return "z-sul";
+  if (pos >= 13 && pos <= 16) return "z-neu";
   if (pos >= 17 && pos <= 20) return "z-reb";
   return "";
 }

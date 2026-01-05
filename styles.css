@@ -223,3 +223,91 @@ body{
   .seedbox{ width:100%; }
   .seedinput{ flex:1; width:auto; }
 }
+
+/* =========================================================
+   ZONAS DA CLASSIFICAÇÃO (cores como na imagem)
+   1-4  Libertadores   (azul)
+   5-6  Pré-libertadores (ciano)
+   7-12 Sul-americana  (verde)
+   17-20 Rebaixados    (vermelho)
+   ========================================================= */
+
+/* garante que a cor de fundo/linha funcione bem */
+.standings tbody tr{
+  position: relative;
+}
+
+/* barra lateral colorida (igual ao visual de apps esportivos) */
+.standings tbody tr.z-lib::before,
+.standings tbody tr.z-pre::before,
+.standings tbody tr.z-sul::before,
+.standings tbody tr.z-reb::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:4px;
+  border-radius: 0;
+}
+
+/* número da posição (coluna #) com cor */
+.standings tbody tr.z-lib td.col-pos{ color: var(--lib); }
+.standings tbody tr.z-pre td.col-pos{ color: var(--pre); }
+.standings tbody tr.z-sul td.col-pos{ color: var(--sul); }
+.standings tbody tr.z-reb td.col-pos{ color: var(--reb); }
+
+/* barra colorida */
+.standings tbody tr.z-lib::before{ background: var(--lib); }
+.standings tbody tr.z-pre::before{ background: var(--pre); }
+.standings tbody tr.z-sul::before{ background: var(--sul); }
+.standings tbody tr.z-reb::before{ background: var(--reb); }
+
+/* leve “tinta” no fundo da linha para destacar a zona (bem sutil) */
+.standings tbody tr.z-lib{
+  background: linear-gradient(90deg, rgba(74,163,255,.14), rgba(0,0,0,0)) !important;
+}
+.standings tbody tr.z-pre{
+  background: linear-gradient(90deg, rgba(70,214,255,.12), rgba(0,0,0,0)) !important;
+}
+.standings tbody tr.z-sul{
+  background: linear-gradient(90deg, rgba(46,204,113,.12), rgba(0,0,0,0)) !important;
+}
+.standings tbody tr.z-reb{
+  background: linear-gradient(90deg, rgba(255,77,77,.13), rgba(0,0,0,0)) !important;
+}
+
+/* mantém hover bonito sem “matar” as cores */
+.standings tbody tr:hover{
+  filter: brightness(1.06);
+}
+
+/* legenda com as mesmas cores */
+.p-lib{ background: var(--lib); }
+.p-pre{ background: var(--pre); }
+.p-sul{ background: var(--sul); }
+.p-reb{ background: var(--reb); }
+
+/* Neutro (13-16) */
+:root{
+  --neu:#7f8c8d; /* cinza neutro */
+}
+
+.standings tbody tr.z-neu::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:4px;
+  background: var(--neu);
+}
+
+.standings tbody tr.z-neu td.col-pos{
+  color: var(--neu);
+}
+
+/* degradê neutro sutil (proporcional às demais zonas) */
+.standings tbody tr.z-neu{
+  background: linear-gradient(90deg, rgba(127,140,141,.10), rgba(0,0,0,0)) !important;
+}
