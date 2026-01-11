@@ -1,7 +1,7 @@
 // =========================
 // Teams (Série A 2025 - conforme sua imagem de tabela)
 // =========================
-const TEAMS = [
+let currentTeams = [
   { id: "FLA", name: "Flamengo", short: "FLA" },
   { id: "PAL", name: "Palmeiras", short: "PAL" },
   { id: "CRU", name: "Cruzeiro", short: "CRU" },
@@ -25,7 +25,46 @@ const TEAMS = [
   { id: "SPT", name: "Sport", short: "SPT" },
 ];
 
-const TEAM_BY_ID = Object.fromEntries(TEAMS.map(t => [t.id, t]));
+// =========================
+// Série B Teams (tabela oculta - times que podem ser promovidos)
+// =========================
+let serieBTeams = [
+  { id: "CTB", name: "Coritiba", short: "CTB" },
+  { id: "CAP", name: "Athletico-PR", short: "CAP" },
+  { id: "CHA", name: "Chapecoense", short: "CHA" },
+  { id: "REM", name: "Remo", short: "REM" },
+];
+
+// Current edition/year
+let currentEdition = 2025;
+
+// =========================
+// User Team State
+// =========================
+let userTeamId = null; // Time selecionado pelo usuário
+let userTeamStats = {
+  titulos: 0,
+  libertadores: 0,
+  preLibertadores: 0,
+  sulAmericana: 0,
+  rebaixamentos: 0
+};
+let isUserInSerieB = false; // Se o time do usuário está rebaixado
+let userSerieBSeasons = 0;  // Temporadas restantes na Série B
+
+// Build team lookup from current teams
+function buildTeamLookup() {
+  return Object.fromEntries(currentTeams.map(t => [t.id, t]));
+}
+
+// Build lookup including Serie B teams
+function buildAllTeamsLookup() {
+  const all = [...currentTeams, ...serieBTeams];
+  return Object.fromEntries(all.map(t => [t.id, t]));
+}
+
+let TEAM_BY_ID = buildTeamLookup();
+let ALL_TEAMS_BY_ID = buildAllTeamsLookup();
 
 // =========================
 // Deterministic RNG (seed)
@@ -37,7 +76,7 @@ function xmur3(str) {
     h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
     h = (h << 13) | (h >>> 19);
   }
-  return function() {
+  return function () {
     h = Math.imul(h ^ (h >>> 16), 2246822507);
     h = Math.imul(h ^ (h >>> 13), 3266489909);
     h ^= (h >>> 16);
@@ -46,7 +85,7 @@ function xmur3(str) {
 }
 
 function sfc32(a, b, c, d) {
-  return function() {
+  return function () {
     a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0;
     let t = (a + b) | 0;
     a = b ^ (b >>> 9);
@@ -136,6 +175,71 @@ function makeEmptyStats(teamId) {
   return { id: teamId, P: 0, J: 0, V: 0, E: 0, D: 0, GP: 0, GC: 0, SG: 0 };
 }
 
+// =========================
+// Season Advancement (Promoção/Rebaixamento)
+// =========================
+function advanceToNextSeason() {
+  // Get the current standings sorted
+  const sorted = sortStandings(Object.values(statsById));
+
+  // Get the last 4 teams (positions 17-20 - relegated)
+  const relegatedTeamIds = sorted.slice(16, 20).map(s => s.id);
+  const relegatedTeams = relegatedTeamIds.map(id => TEAM_BY_ID[id]);
+
+  // Check if user's team is relegated
+  const userWasRelegated = userTeamId && relegatedTeamIds.includes(userTeamId);
+
+  // Get promoted teams from Série B
+  const promotedTeams = [...serieBTeams];
+
+  // Check if user's team is being promoted
+  const userIsBeingPromoted = isUserInSerieB && serieBTeams.some(t => t.id === userTeamId);
+
+  // Update Série B with relegated teams
+  serieBTeams = [...relegatedTeams];
+
+  // Remove relegated teams from current teams and add promoted teams
+  currentTeams = currentTeams.filter(t => !relegatedTeamIds.includes(t.id));
+  currentTeams.push(...promotedTeams);
+
+  // Rebuild the team lookups
+  TEAM_BY_ID = buildTeamLookup();
+  ALL_TEAMS_BY_ID = buildAllTeamsLookup();
+
+  // Handle user relegation state
+  if (userWasRelegated) {
+    isUserInSerieB = true;
+    userSerieBSeasons = 1;
+  } else if (userIsBeingPromoted) {
+    isUserInSerieB = false;
+    userSerieBSeasons = 0;
+  }
+
+  // Increment edition
+  currentEdition += 1;
+
+  // Update seed for new season
+  seedValue = `season-${currentEdition}`;
+
+  // Build fresh season with new teams
+  buildFreshSeason();
+
+  // Update the edition title in the UI
+  updateEditionTitle();
+
+  // If user is in Serie B, simulate the season automatically and show message
+  if (isUserInSerieB) {
+    showSerieBModal();
+  }
+}
+
+function updateEditionTitle() {
+  const editionEl = document.getElementById("editionTitle");
+  if (editionEl) {
+    editionEl.textContent = `Campeonato Brasileiro Série A — Edição ${currentEdition}`;
+  }
+}
+
 function sortStandings(list) {
   return [...list].sort((a, b) => {
     if (b.P !== a.P) return b.P - a.P;
@@ -212,19 +316,20 @@ let viewingRoundIndex = 0;       // which round user is viewing (0..37)
 function buildFreshSeason() {
   rng = makeRng(seedValue);
 
-  const teamIds = TEAMS.map(t => t.id);
+  const teamIds = currentTeams.map(t => t.id);
   rounds = buildRounds(teamIds, rng);
 
-  statsById = Object.fromEntries(TEAMS.map(t => [t.id, makeEmptyStats(t.id)]));
+  statsById = Object.fromEntries(currentTeams.map(t => [t.id, makeEmptyStats(t.id)]));
   simulatedRoundIndex = 0;
   viewingRoundIndex = 0;
 
+  updateEditionTitle();
   updateControls();
   renderAll();
 }
 
 function recomputeTableFromSimulated() {
-  statsById = Object.fromEntries(TEAMS.map(t => [t.id, makeEmptyStats(t.id)]));
+  statsById = Object.fromEntries(currentTeams.map(t => [t.id, makeEmptyStats(t.id)]));
   for (let i = 0; i < simulatedRoundIndex; i++) {
     rounds[i].matches.forEach(m => {
       if (m.result) applyMatchToTable(statsById, m);
@@ -283,7 +388,13 @@ function renderStandings() {
     const team = TEAM_BY_ID[s.id];
 
     const tr = document.createElement("tr");
-    tr.className = zoneClass(pos);
+    let classes = zoneClass(pos);
+
+    // Highlight user's team
+    if (s.id === userTeamId) {
+      classes += " user-team";
+    }
+    tr.className = classes;
 
     tr.innerHTML = `
       <td class="col-pos">${pos}</td>
@@ -382,9 +493,27 @@ function renderHeader() {
 function updateControls() {
   const btnNext = document.getElementById("btnNext");
   const btnSimAll = document.getElementById("btnSimAll");
+  const btnNextSeason = document.getElementById("btnNextSeason");
 
-  btnNext.disabled = simulatedRoundIndex >= 38;
-  btnSimAll.disabled = simulatedRoundIndex >= 38;
+  const seasonComplete = simulatedRoundIndex >= 38;
+
+  btnNext.disabled = seasonComplete;
+  btnSimAll.disabled = seasonComplete;
+
+  // Show/hide next season button
+  if (btnNextSeason) {
+    btnNextSeason.style.display = seasonComplete ? "inline-block" : "none";
+  }
+
+  // Show season result modal when season completes
+  if (seasonComplete && userTeamId && !isUserInSerieB) {
+    // Only show once per season completion
+    const modalShown = document.getElementById("seasonResultModal").style.display === "flex";
+    if (!modalShown && !document.getElementById("seasonResultModal").dataset.shown) {
+      showSeasonResultModal();
+      document.getElementById("seasonResultModal").dataset.shown = "true";
+    }
+  }
 
   const btnPrevRound = document.getElementById("btnPrevRound");
   const btnNextRoundView = document.getElementById("btnNextRoundView");
@@ -400,6 +529,174 @@ function renderAll() {
   renderStandings();
   renderMatches();
   updateControls();
+}
+
+// =========================
+// Modal Functions
+// =========================
+function showTeamSelectionModal() {
+  const modal = document.getElementById("teamSelectionModal");
+  const grid = document.getElementById("teamSelectionGrid");
+  grid.innerHTML = "";
+
+  // Show all Serie A teams for selection
+  currentTeams.forEach(team => {
+    const btn = document.createElement("button");
+    btn.className = "team-select-btn";
+    btn.innerHTML = `
+      <span class="team-select-short">${team.short}</span>
+      <span class="team-select-name">${team.name}</span>
+    `;
+    btn.addEventListener("click", () => selectUserTeam(team.id));
+    grid.appendChild(btn);
+  });
+
+  modal.style.display = "flex";
+}
+
+function selectUserTeam(teamId) {
+  userTeamId = teamId;
+  const modal = document.getElementById("teamSelectionModal");
+  modal.style.display = "none";
+
+  // Update UI to show selected team
+  updateUserTeamDisplay();
+  renderAll();
+}
+
+function updateUserTeamDisplay() {
+  const display = document.getElementById("userTeamDisplay");
+  if (display && userTeamId) {
+    const team = ALL_TEAMS_BY_ID[userTeamId];
+    display.innerHTML = `<span class="user-team-badge">${team.short}</span>`;
+    display.style.display = "flex";
+  }
+}
+
+function getSeasonResultMessage(position) {
+  if (position === 1) {
+    return { title: "🏆 CAMPEÃO!", message: "Parabéns, você ganhou o Campeonato Brasileiro Série A!", type: "champion" };
+  } else if (position >= 2 && position <= 4) {
+    return { title: "⭐ LIBERTADORES!", message: "O seu time entrou para a Libertadores!", type: "libertadores" };
+  } else if (position >= 5 && position <= 6) {
+    return { title: "🌟 PRÉ-LIBERTADORES!", message: "O seu time está na Pré-Libertadores!", type: "pre-libertadores" };
+  } else if (position >= 7 && position <= 12) {
+    return { title: "🏅 SUL-AMERICANA!", message: "O seu time foi para a Sul-Americana!", type: "sul-americana" };
+  } else if (position >= 17 && position <= 20) {
+    return { title: "📉 REBAIXADO!", message: "O seu time foi rebaixado!", type: "relegated" };
+  } else {
+    return { title: "📊 FIM DE TEMPORADA", message: "Seu time terminou na zona neutra.", type: "neutral" };
+  }
+}
+
+function recordAchievement(position) {
+  if (position === 1) {
+    userTeamStats.titulos += 1;
+  } else if (position >= 2 && position <= 4) {
+    userTeamStats.libertadores += 1;
+  } else if (position >= 5 && position <= 6) {
+    userTeamStats.preLibertadores += 1;
+  } else if (position >= 7 && position <= 12) {
+    userTeamStats.sulAmericana += 1;
+  } else if (position >= 17 && position <= 20) {
+    userTeamStats.rebaixamentos += 1;
+  }
+}
+
+function showSeasonResultModal() {
+  if (!userTeamId) return;
+
+  const sorted = sortStandings(Object.values(statsById));
+  const userPosition = sorted.findIndex(s => s.id === userTeamId) + 1;
+
+  if (userPosition === 0) return; // User team not in Serie A
+
+  const result = getSeasonResultMessage(userPosition);
+  recordAchievement(userPosition);
+
+  const modal = document.getElementById("seasonResultModal");
+  const title = document.getElementById("seasonResultTitle");
+  const message = document.getElementById("seasonResultMessage");
+  const positionEl = document.getElementById("seasonResultPosition");
+
+  title.textContent = result.title;
+  title.className = `modal-result-title result-${result.type}`;
+  message.textContent = result.message;
+  positionEl.textContent = `${userPosition}º lugar`;
+
+  modal.style.display = "flex";
+}
+
+function closeSeasonResultModal() {
+  const modal = document.getElementById("seasonResultModal");
+  modal.style.display = "none";
+}
+
+function showAchievementsModal() {
+  const modal = document.getElementById("achievementsModal");
+  const content = document.getElementById("achievementsContent");
+
+  const team = ALL_TEAMS_BY_ID[userTeamId];
+  const teamName = team ? team.name : "Nenhum time selecionado";
+
+  content.innerHTML = `
+    <div class="achievements-header">
+      <h3>${teamName}</h3>
+      ${isUserInSerieB ? '<span class="serie-b-badge">Série B</span>' : ''}
+    </div>
+    <div class="achievements-grid">
+      <div class="achievement-item">
+        <span class="achievement-icon">🏆</span>
+        <span class="achievement-count">${userTeamStats.titulos}</span>
+        <span class="achievement-label">Títulos</span>
+      </div>
+      <div class="achievement-item">
+        <span class="achievement-icon">⭐</span>
+        <span class="achievement-count">${userTeamStats.libertadores}</span>
+        <span class="achievement-label">Libertadores</span>
+      </div>
+      <div class="achievement-item">
+        <span class="achievement-icon">🌟</span>
+        <span class="achievement-count">${userTeamStats.preLibertadores}</span>
+        <span class="achievement-label">Pré-Libertadores</span>
+      </div>
+      <div class="achievement-item">
+        <span class="achievement-icon">🏅</span>
+        <span class="achievement-count">${userTeamStats.sulAmericana}</span>
+        <span class="achievement-label">Sul-Americana</span>
+      </div>
+      <div class="achievement-item achievement-negative">
+        <span class="achievement-icon">📉</span>
+        <span class="achievement-count">${userTeamStats.rebaixamentos}</span>
+        <span class="achievement-label">Rebaixamentos</span>
+      </div>
+    </div>
+  `;
+
+  modal.style.display = "flex";
+}
+
+function closeAchievementsModal() {
+  const modal = document.getElementById("achievementsModal");
+  modal.style.display = "none";
+}
+
+function showSerieBModal() {
+  const modal = document.getElementById("serieBModal");
+  const team = ALL_TEAMS_BY_ID[userTeamId];
+  document.getElementById("serieBTeamName").textContent = team ? team.name : "Seu time";
+  modal.style.display = "flex";
+}
+
+function closeSerieBModal() {
+  const modal = document.getElementById("serieBModal");
+  modal.style.display = "none";
+
+  // Simulate the Serie B season automatically
+  simulateAll();
+
+  // After Serie B season, advance to next (user team gets promoted)
+  userSerieBSeasons = 0;
 }
 
 // =========================
@@ -422,6 +719,8 @@ function setupEvents() {
   });
 
   document.getElementById("btnReset").addEventListener("click", () => {
+    // Reset shown flag for season result modal
+    document.getElementById("seasonResultModal").dataset.shown = "";
     buildFreshSeason();
   });
 
@@ -433,6 +732,12 @@ function setupEvents() {
     simulateAll();
   });
 
+  document.getElementById("btnNextSeason").addEventListener("click", () => {
+    // Reset shown flag for next season
+    document.getElementById("seasonResultModal").dataset.shown = "";
+    advanceToNextSeason();
+  });
+
   document.getElementById("btnPrevRound").addEventListener("click", () => {
     viewingRoundIndex = Math.max(0, viewingRoundIndex - 1);
     renderAll();
@@ -442,6 +747,12 @@ function setupEvents() {
     viewingRoundIndex = Math.min(37, viewingRoundIndex + 1);
     renderAll();
   });
+
+  // Modal event listeners
+  document.getElementById("btnCloseSeasonResult").addEventListener("click", closeSeasonResultModal);
+  document.getElementById("btnCloseAchievements").addEventListener("click", closeAchievementsModal);
+  document.getElementById("btnCloseSerieBModal").addEventListener("click", closeSerieBModal);
+  document.getElementById("btnShowAchievements").addEventListener("click", showAchievementsModal);
 }
 
 // =========================
@@ -449,3 +760,6 @@ function setupEvents() {
 // =========================
 setupEvents();
 buildFreshSeason();
+
+// Show team selection modal on first load
+showTeamSelectionModal();

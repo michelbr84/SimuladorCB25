@@ -1,11 +1,13 @@
 <!doctype html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Simulador Brasileirão Série A 2025 — 38 Rodadas</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
   <div class="app">
     <header class="topbar">
@@ -13,11 +15,13 @@
         <div class="dot"></div>
         <div>
           <div class="brand-title">SIMULADOR</div>
-          <div class="brand-sub">Campeonato Brasileiro Série A — Edição 2025</div>
+          <div class="brand-sub" id="editionTitle">Campeonato Brasileiro Série A — Edição 2025</div>
         </div>
+        <div id="userTeamDisplay" class="user-team-display" style="display:none"></div>
       </div>
 
       <div class="controls">
+        <button id="btnShowAchievements" class="btn btn-ghost" type="button">🏆 Conquistas</button>
         <div class="seedbox">
           <label class="seedlabel" for="seedInput">Seed</label>
           <input id="seedInput" class="seedinput" type="text" placeholder="ex: michel-2025" />
@@ -27,6 +31,8 @@
         <button id="btnReset" class="btn btn-ghost" type="button">Reiniciar</button>
         <button id="btnNext" class="btn btn-primary" type="button">Próxima rodada</button>
         <button id="btnSimAll" class="btn btn-ghost" type="button">Simular até o fim</button>
+        <button id="btnNextSeason" class="btn btn-primary" type="button" style="display:none">Avançar para próxima
+          temporada</button>
       </div>
     </header>
 
@@ -87,6 +93,47 @@
     </main>
   </div>
 
+  <!-- MODAL: Seleção de Time -->
+  <div id="teamSelectionModal" class="modal" style="display:none">
+    <div class="modal-content modal-large">
+      <h2 class="modal-title">⚽ Escolha seu time</h2>
+      <p class="modal-subtitle">Selecione o time que você vai acompanhar durante as temporadas</p>
+      <div id="teamSelectionGrid" class="team-selection-grid"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: Resultado da Temporada -->
+  <div id="seasonResultModal" class="modal" style="display:none">
+    <div class="modal-content">
+      <h2 id="seasonResultTitle" class="modal-result-title">🏆 CAMPEÃO!</h2>
+      <p id="seasonResultPosition" class="modal-position">1º lugar</p>
+      <p id="seasonResultMessage" class="modal-message">Parabéns, você ganhou o Campeonato Brasileiro Série A!</p>
+      <button id="btnCloseSeasonResult" class="btn btn-primary modal-btn">Continuar</button>
+    </div>
+  </div>
+
+  <!-- MODAL: Conquistas -->
+  <div id="achievementsModal" class="modal" style="display:none">
+    <div class="modal-content">
+      <h2 class="modal-title">🏆 Conquistas do seu time</h2>
+      <div id="achievementsContent"></div>
+      <button id="btnCloseAchievements" class="btn btn-primary modal-btn">Fechar</button>
+    </div>
+  </div>
+
+  <!-- MODAL: Série B -->
+  <div id="serieBModal" class="modal" style="display:none">
+    <div class="modal-content">
+      <h2 class="modal-result-title result-relegated">📉 SÉRIE B</h2>
+      <p class="modal-message"><span id="serieBTeamName">Seu time</span> foi rebaixado e jogará a Série B esta
+        temporada.</p>
+      <p class="modal-subtitle">A temporada será simulada automaticamente. Seu time retornará à Série A na próxima
+        edição.</p>
+      <button id="btnCloseSerieBModal" class="btn btn-primary modal-btn">Simular Série B</button>
+    </div>
+  </div>
+
   <script src="script.js"></script>
 </body>
+
 </html>

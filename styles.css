@@ -311,3 +311,250 @@ body{
 .standings tbody tr.z-neu{
   background: linear-gradient(90deg, rgba(127,140,141,.10), rgba(0,0,0,0)) !important;
 }
+
+/* =========================
+   USER TEAM HIGHLIGHT
+   ========================= */
+.standings tbody tr.user-team {
+  box-shadow: inset 0 0 0 2px #ffd700, 0 0 12px rgba(255, 215, 0, 0.3);
+  position: relative;
+  z-index: 1;
+}
+
+.standings tbody tr.user-team td.col-team .teamname {
+  color: #ffd700;
+}
+
+.standings tbody tr.user-team::after {
+  content: "★";
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #ffd700;
+  font-size: 14px;
+}
+
+.user-team-display {
+  display: flex;
+  align-items: center;
+  margin-left: 12px;
+}
+
+.user-team-badge {
+  background: linear-gradient(135deg, #ffd700, #ffaa00);
+  color: #000;
+  font-weight: 900;
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+/* =========================
+   MODAL STYLES
+   ========================= */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 28px;
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: modalIn 0.25s ease-out;
+}
+
+.modal-large {
+  max-width: 700px;
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-title {
+  font-size: 22px;
+  font-weight: 900;
+  margin: 0 0 8px 0;
+  color: var(--text);
+}
+
+.modal-subtitle {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0 0 20px 0;
+}
+
+.modal-result-title {
+  font-size: 28px;
+  font-weight: 900;
+  margin: 0 0 12px 0;
+}
+
+.result-champion { color: #ffd700; }
+.result-libertadores { color: var(--lib); }
+.result-pre-libertadores { color: var(--pre); }
+.result-sul-americana { color: var(--sul); }
+.result-relegated { color: var(--reb); }
+.result-neutral { color: var(--muted); }
+
+.modal-position {
+  font-size: 42px;
+  font-weight: 900;
+  margin: 16px 0;
+  color: var(--text);
+}
+
+.modal-message {
+  font-size: 16px;
+  color: var(--text);
+  margin: 0 0 24px 0;
+}
+
+.modal-btn {
+  min-width: 140px;
+  padding: 12px 24px;
+}
+
+/* =========================
+   TEAM SELECTION GRID
+   ========================= */
+.team-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.team-select-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text);
+}
+
+.team-select-btn:hover {
+  background: rgba(74, 163, 255, 0.15);
+  border-color: var(--lib);
+  transform: translateY(-2px);
+}
+
+.team-select-short {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+}
+
+.team-select-name {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* =========================
+   ACHIEVEMENTS
+   ========================= */
+.achievements-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.achievements-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.serie-b-badge {
+  background: var(--reb);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+.achievement-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.achievement-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.achievement-count {
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.achievement-label {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 4px;
+}
+
+.achievement-negative {
+  border-color: rgba(255, 77, 77, 0.3);
+  background: rgba(255, 77, 77, 0.08);
+}
+
+@media (max-width: 600px) {
+  .team-selection-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .achievements-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
